@@ -1,172 +1,225 @@
-// ===============================
-// IMPORTS
-// ===============================
 import { useEffect, useState } from "react";
 import api from "../Api/api";
 
-// ===============================
-// COMPONENT
-// ===============================
-function AllTasks() {
+/* ===============================
+   DATE FORMATTER
+================================ */
+const formatDate = (date) => {
+  if (!date) return "-";
+  return new Date(date).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
 
-  // ===============================
-  // STATES (VERY IMPORTANT)
-  // ===============================
+/* ===============================
+   STATUS MODAL
+================================ */
+function TaskStatusModal({ task, onClose, onSave }) {
+  const [status, setStatus] = useState(task.status);
 
-  // NOTICE: all tasks from database
-  const [tasks, setTasks] = useState([]);
-
-  // NOTICE: all users for Assign dropdown
-  const [users, setUsers] = useState([]);
-
-  // NOTICE: loading state
-  const [loading, setLoading] = useState(true);
-
-  // NOTICE: filter tabs
-  const [filter, setFilter] = useState("all");
-
-  // NOTICE: create task modal open/close
-  const [openModal, setOpenModal] = useState(false);
-
-  // NOTICE: form states
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [assignedTo, setAssignedTo] = useState("");
-
-  // NOTICE: selected task for RIGHT SIDE PANEL
-  const [selectedTask, setSelectedTask] = useState(null);
-
-  // ===============================
-  // FETCH TASKS
-  // ===============================
-  useEffect(() => {
-    const fetchTasks = async () => {
-      try {
-        const res = await api.get("/tasks");
-        setTasks(res.data.data);
-      } catch (error) {
-        console.error("Fetch tasks failed", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchTasks();
-  }, []);
-
-  // ===============================
-  // FETCH USERS (FOR ASSIGN DROPDOWN)
-  // ===============================
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await api.get("/users");
-        setUsers(res.data.data);
-      } catch (error) {
-        console.error("Fetch users failed", error);
-      }
-    };
-
-    fetchUsers();
-  }, []);
-
-  // ===============================
-  // FILTER TASKS
-  // ===============================
-  const filteredTasks =
-    filter === "all"
-      ? tasks
-      : tasks.filter((task) => task.status === filter);
-
-  // ===============================
-  // CREATE TASK
-  // ===============================
-  const handleCreateTask = async () => {
-    if (!title || !assignedTo) {
-      alert("Title and Assigned User are required");
-      return;
-    }
-
-    try {
-      await api.post("/tasks", {
-        title,
-        description,
-        assignedTo, // NOTICE: USER ID SENT TO BACKEND
-      });
-
-      setOpenModal(false);
-      window.location.reload(); // simple refresh
-    } catch (error) {
-      console.error("Create task failed", error);
-    }
-  };
-
-  // ===============================
-  // LOADING UI
-  // ===============================
-  if (loading) return <p>Loading...</p>;
-
-  // ===============================
-  // JSX START
-  // ===============================
   return (
-    <div className="relative flex">
-
-      {/* ===============================
-          LEFT SIDE (TASK TABLE)
-         =============================== */}
-      <div className="flex-1 pr-4">
-
-        {/* HEADER */}
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white w-[420px] rounded-2xl p-6 shadow-xl">
         <div className="flex justify-between mb-4">
-          <h2 className="text-xl font-semibold">All Tasks</h2>
+          <h2 className="font-semibold">Task Status</h2>
+          <button onClick={onClose}>✕</button>
+        </div>
 
+        <div className="bg-orange-50 text-orange-600 px-3 py-2 rounded mb-4">
+          Status <span className="float-right capitalize">{status}</span>
+        </div>
+
+        <p className="text-sm text-gray-400">Update status</p>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="w-full border rounded px-3 py-2 mt-2"
+        >
+          <option value="pending">Pending</option>
+          <option value="in-progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+
+        <div className="flex gap-3 mt-6">
           <button
-            onClick={() => setOpenModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            onClick={onClose}
+            className="w-1/2 py-2 bg-gray-100 rounded"
           >
-            Create Task
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave(task._id, status)}
+            className="w-1/2 py-2 bg-indigo-600 text-white rounded"
+          >
+            Save Changes
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
 
-        {/* FILTERS */}
-        <div className="flex gap-2 mb-4">
-          {["all", "pending", "completed", "inprogress"].map((item) => (
-            <button
-              key={item}
-              onClick={() => setFilter(item)}
-              className={`px-3 py-1 border rounded ${
-                filter === item ? "bg-blue-100 text-blue-600" : ""
-              }`}
-            >
-              {item}
-            </button>
-          ))}
+/* ===============================
+   EDIT TASK MODAL
+================================ */
+function EditTaskModal({ task, users, onClose, onSave }) {
+  const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description || "");
+  const [assignedTo, setAssignedTo] = useState(task.assignedTo?._id);
+
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white w-[420px] rounded-2xl p-6 shadow-xl">
+        <div className="flex justify-between mb-4">
+          <h2 className="font-semibold">Edit Task</h2>
+          <button onClick={onClose}>✕</button>
         </div>
 
-        {/* TABLE */}
-        <table className="w-full border bg-white">
-          <thead>
-            <tr className="border-b text-left">
-              <th className="p-2">ID</th>
+        <div className="space-y-3 text-sm">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+            placeholder="Task title"
+          />
+
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+            rows={3}
+            placeholder="Description"
+          />
+
+          <select
+            value={assignedTo}
+            onChange={(e) => setAssignedTo(e.target.value)}
+            className="w-full border rounded px-3 py-2"
+          >
+            {users.map((u) => (
+              <option key={u._id} value={u._id}>
+                {u.fullName}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onClose}
+            className="w-1/2 py-2 bg-gray-100 rounded"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() =>
+              onSave(task._id, { title, description, assignedTo })
+            }
+            className="w-1/2 py-2 bg-indigo-600 text-white rounded"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===============================
+   DELETE MODAL
+================================ */
+function DeleteConfirmModal({ onClose, onDelete }) {
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white w-[380px] rounded-2xl p-6 shadow-xl text-center">
+        <h3 className="font-semibold mb-2">Delete this task?</h3>
+        <p className="text-sm text-gray-500 mb-6">
+          This action cannot be undone.
+        </p>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="w-1/2 py-2 bg-gray-100 rounded"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onDelete}
+            className="w-1/2 py-2 bg-red-600 text-white rounded"
+          >
+            Delete Task
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===============================
+   MAIN COMPONENT
+================================ */
+export default function AllTasks() {
+  const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  useEffect(() => {
+    api.get("/tasks").then(res => setTasks(res.data.data));
+    api.get("/users").then(res => setUsers(res.data.data));
+  }, []);
+
+  const updateStatus = async (id, status) => {
+    await api.put(`/tasks/${id}`, { status });
+    setTasks(t => t.map(x => x._id === id ? { ...x, status } : x));
+    setStatusOpen(false);
+  };
+
+  const editTask = async (id, data) => {
+    await api.put(`/tasks/${id}`, data);
+    setTasks(t => t.map(x => x._id === id ? { ...x, ...data } : x));
+    setEditOpen(false);
+  };
+
+  const deleteTask = async () => {
+    await api.delete(`/tasks/${selectedTask._id}`);
+    setTasks(t => t.filter(x => x._id !== selectedTask._id));
+    setSelectedTask(null);
+    setDeleteOpen(false);
+  };
+
+  return (
+    <div className="flex bg-gray-50 min-h-screen p-6 gap-6">
+
+      {/* TASK LIST */}
+      <div className="flex-1 bg-white rounded-xl shadow">
+        <table className="w-full">
+          <thead className="text-sm text-gray-500 border-b">
+            <tr>
+              <th className="p-3">ID</th>
               <th>Title</th>
               <th>Assigned</th>
               <th>Status</th>
-              <th>Action</th>
+              <th>Created</th>
+              <th></th>
             </tr>
           </thead>
-
           <tbody>
-            {filteredTasks.map((task) => (
-              <tr key={task._id} className="border-b text-sm">
-                <td className="p-2">#{task._id.slice(-5)}</td>
-                <td>{task.title}</td>
-                <td>{task.assignedTo?.fullName}</td>
-                <td>{task.status}</td>
+            {tasks.map(t => (
+              <tr key={t._id} className="border-b hover:bg-gray-50 text-sm">
+                <td className="p-3">#{t._id.slice(-5)}</td>
+                <td>{t.title}</td>
+                <td>{t.assignedTo?.fullName}</td>
+                <td className="capitalize">{t.status}</td>
+                <td>{formatDate(t.createdAt)}</td>
                 <td>
-                  {/* NOTICE: THIS IS THE VIEW BUTTON */}
                   <button
-                    onClick={() => setSelectedTask(task)}
+                    onClick={() => setSelectedTask(t)}
                     className="px-3 py-1 bg-gray-100 rounded"
                   >
                     View
@@ -178,91 +231,70 @@ function AllTasks() {
         </table>
       </div>
 
-      {/* ===============================
-          RIGHT SIDE (TASK DETAILS)
-         =============================== */}
+      {/* RIGHT PANEL */}
       {selectedTask && (
-        <div className="w-[350px] border-l bg-white p-4 relative">
+        <div className="w-[360px] bg-white rounded-xl shadow p-5">
+          <h3 className="font-semibold mb-3">Task Details</h3>
 
-          {/* HEADER */}
-          <div className="flex justify-between mb-4">
-            <h3 className="font-semibold">Task Details</h3>
-            <button onClick={() => setSelectedTask(null)}>✕</button>
-          </div>
+          <p className="text-sm text-gray-400">Status</p>
+          <p className="mb-3 capitalize">{selectedTask.status}</p>
 
-          <p className="text-sm text-gray-500">Status</p>
-          <p className="mb-3">{selectedTask.status}</p>
-
-          <p className="text-sm text-gray-500">Title</p>
+          <p className="text-sm text-gray-400">Title</p>
           <p className="mb-3">{selectedTask.title}</p>
 
-          <p className="text-sm text-gray-500">Assigned To</p>
+          <p className="text-sm text-gray-400">Assigned</p>
           <p className="mb-3">{selectedTask.assignedTo?.fullName}</p>
 
-          <p className="text-sm text-gray-500">Description</p>
-          <p>
-            {selectedTask.description || "No description provided"}
-          </p>
+          <p className="text-sm text-gray-400">Created</p>
+          <p className="mb-4">{formatDate(selectedTask.createdAt)}</p>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setDeleteOpen(true)}
+              className="flex-1 bg-gray-100 py-2 rounded"
+            >
+              Delete
+            </button>
+            <button
+              onClick={() => setEditOpen(true)}
+              className="flex-1 bg-indigo-600 text-white py-2 rounded"
+            >
+              Edit Task
+            </button>
+          </div>
+
+          <button
+            onClick={() => setStatusOpen(true)}
+            className="mt-3 w-full bg-indigo-100 text-indigo-600 py-2 rounded"
+          >
+            Update Status
+          </button>
         </div>
       )}
 
-      {/* ===============================
-          CREATE TASK MODAL
-         =============================== */}
-      {openModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+      {statusOpen && (
+        <TaskStatusModal
+          task={selectedTask}
+          onClose={() => setStatusOpen(false)}
+          onSave={updateStatus}
+        />
+      )}
 
-          <div className="bg-white p-5 w-[400px] rounded">
-            <h3 className="mb-3 font-semibold">Create Task</h3>
+      {editOpen && (
+        <EditTaskModal
+          task={selectedTask}
+          users={users}
+          onClose={() => setEditOpen(false)}
+          onSave={editTask}
+        />
+      )}
 
-            <input
-              placeholder="Task title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full border p-2 mb-2"
-            />
-
-            <textarea
-              placeholder="Description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full border p-2 mb-2"
-            />
-
-            {/* ASSIGN DROPDOWN */}
-            <select
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              className="w-full border p-2 mb-4"
-            >
-              <option value="">Assign to</option>
-              {users.map((user) => (
-                <option key={user._id} value={user._id}>
-                  {user.fullName}
-                </option>
-              ))}
-            </select>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setOpenModal(false)}
-                className="w-1/2 border p-2"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateTask}
-                className="w-1/2 bg-blue-600 text-white p-2"
-              >
-                Create
-              </button>
-            </div>
-          </div>
-
-        </div>
+      {deleteOpen && (
+        <DeleteConfirmModal
+          onClose={() => setDeleteOpen(false)}
+          onDelete={deleteTask}
+        />
       )}
     </div>
   );
 }
-
-export default AllTasks;
