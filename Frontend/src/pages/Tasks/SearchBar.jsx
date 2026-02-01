@@ -12,14 +12,14 @@ function SearchBar() {
   return (
     <div>
       <div className="border border-[#85ac85] flex items-center rounded-full">
-        <div className="pl-2 text-gray-400">
+        <div className="pl-2 text-gray-400 mt-0.5">
           <FaSearch size={15} />
         </div>
         <input
           onChange={handleSearch}
           type="text"
           placeholder="Search image..."
-          className="w-[350px]  pl-1.5 md:py-1 lg:py-1 font-normal text-md tracking-widest outline-none"
+          className="w-[300px]  pl-1.5 md:py-1 lg:py-1 font-normal text-md tracking-widest outline-none"
         />
       </div>
     </div>

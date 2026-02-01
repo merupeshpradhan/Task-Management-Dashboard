@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import SearchBar from "../pages/Tasks/SearchBar";
 
 function Navbar() {
   const [user, setUser] = useState(null);
@@ -12,13 +13,12 @@ function Navbar() {
     updateUser();
     window.addEventListener("userUpdated", updateUser);
 
-    return () =>
-      window.removeEventListener("userUpdated", updateUser);
+    return () => window.removeEventListener("userUpdated", updateUser);
   }, []);
 
   return (
     <nav className="h-14 bg-white border-b flex items-center justify-between px-6">
-      <h1 className="font-semibold">Task Dashboard</h1>
+      <SearchBar />
 
       <div className="flex items-center gap-2">
         <img
@@ -26,9 +26,7 @@ function Navbar() {
           alt="user"
           className="w-8 h-8 rounded-full"
         />
-        <span className="font-medium">
-          {user?.fullName || "User"}
-        </span>
+        <span className="font-medium">{user?.fullName || "User"}</span>
       </div>
     </nav>
   );

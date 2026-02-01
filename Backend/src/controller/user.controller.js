@@ -96,6 +96,20 @@ const userSignin = asyncHandler(async (req, res) => {
 });
 
 // =========================
+//     GET ALL USERS (ADMIN)
+// =========================
+const getAllUsers = asyncHandler(async (req, res) => {
+  const users = await User.find({ role: "user" }).select(
+    "_id fullName email"
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, users, "Users fetched successfully"));
+});
+
+
+// =========================
 //          LOGOUT
 // =========================
 const userLogout = asyncHandler(async (req, res) => {
@@ -119,4 +133,4 @@ const userLogout = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logout successfully."));
 });
 
-export { userSignup, userSignin, userLogout };
+export { userSignup, userSignin,getAllUsers, userLogout };
