@@ -34,6 +34,7 @@ function SignIn() {
         const errorMsg =
           error.response?.data?.message ||
           "SignIn failed. Something went wrong.";
+          alert(errorMsg)
 
         console.log(errorMsg);
       } else {

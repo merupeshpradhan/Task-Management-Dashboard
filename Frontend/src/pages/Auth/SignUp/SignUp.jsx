@@ -15,12 +15,11 @@ function SignUp() {
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("fullName", fullName);
-      formData.append("email", email);
-      formData.append("password", password);
-
-      const res = await api.post("/users/signup", formData);
+      const res = await api.post("/users/signup", {
+        fullName,
+        email,
+        password,
+      });
       console.log(res.data);
 
       // console.log("You register successfully!", res);
@@ -61,7 +60,7 @@ function SignUp() {
         <p>Login in to manage your task and track progress.</p>
 
         <form onSubmit={userSignUp} className="space-y-5 mt-10">
-        {/* FullName */}
+          {/* FullName */}
           <div className="firstName w-full">
             <label className="md:font-semibold text-gray-700">First Name</label>
             <input
