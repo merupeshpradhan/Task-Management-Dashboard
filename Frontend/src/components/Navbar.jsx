@@ -1,31 +1,33 @@
 import { useEffect, useState } from "react";
-import SearchBar from "../pages/Tasks/SearchBar";
 
 function Navbar() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    const updateUser = () => {
+      const storedUser = localStorage.getItem("user");
+      setUser(storedUser ? JSON.parse(storedUser) : null);
+    };
+
+    updateUser();
+    window.addEventListener("userUpdated", updateUser);
+
+    return () =>
+      window.removeEventListener("userUpdated", updateUser);
   }, []);
 
   return (
-    <nav className="w-full  py-3 px-4 flex justify-between items-center z-50">
-      {/* Logo / App Name */}
-      <div className="flex items-center gap-2">
-        <SearchBar />
-      </div>
-      {/* User Info */}
+    <nav className="h-14 bg-white border-b flex items-center justify-between px-6">
+      <h1 className="font-semibold">Task Dashboard</h1>
+
       <div className="flex items-center gap-2">
         <img
           src="/user-image.png"
-          alt={user?.fullName}
+          alt="user"
           className="w-8 h-8 rounded-full"
         />
-        <span className="font-semibold text-green-900">
-          {user?.fullName || "Guest"}
+        <span className="font-medium">
+          {user?.fullName || "User"}
         </span>
       </div>
     </nav>
