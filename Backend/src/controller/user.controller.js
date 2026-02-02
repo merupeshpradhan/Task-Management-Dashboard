@@ -82,6 +82,7 @@ const userSignin = asyncHandler(async (req, res) => {
     id: user._id,
     fullName: user.fullName,
     email: user.email,
+    role: user.role,
   };
 
   return res
