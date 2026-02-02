@@ -1,18 +1,25 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose from "mongoose";
 
-const taskSchema = new Schema(
+const taskSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     description: { type: String, required: true },
-    assignedTo: { type: Schema.Types.ObjectId, ref: "User", required: true },
     status: {
       type: String,
       enum: ["pending", "completed"],
       default: "pending",
     },
-    createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 export const Task = mongoose.model("Task", taskSchema);

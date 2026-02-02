@@ -4,7 +4,7 @@ import { FaTasks } from "react-icons/fa";
 import { IoAddCircleOutline } from "react-icons/io5";
 
 function TaskManagement() {
-  const { total, pending, inProgress, completed } = useDashboardStats();
+  const { total, pending, completed } = useDashboardStats();
 
   return (
     <>
@@ -14,8 +14,11 @@ function TaskManagement() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <StatCard title="Total Tasks" value={total} color="bg-blue-500" />
         <StatCard title="Pending Tasks" value={pending} color="bg-orange-500" />
-        <StatCard title="In Progress" value={inProgress} color="bg-purple-500" />
-        <StatCard title="Completed Tasks" value={completed} color="bg-green-500" />
+        <StatCard
+          title="Completed Tasks"
+          value={completed}
+          color="bg-green-500"
+        />
       </div>
 
       {/* QUICK ACTIONS */}
@@ -32,9 +35,7 @@ function TaskManagement() {
             <FaTasks />
             <div>
               <h4 className="font-semibold">All Tasks</h4>
-              <p className="text-sm text-gray-500">
-                View and manage all tasks
-              </p>
+              <p className="text-sm text-gray-500">View and manage all tasks</p>
             </div>
           </Link>
 
@@ -45,9 +46,7 @@ function TaskManagement() {
             <IoAddCircleOutline size={22} />
             <div>
               <h4 className="font-semibold">Create Task</h4>
-              <p className="text-sm text-gray-500">
-                Create and assign tasks
-              </p>
+              <p className="text-sm text-gray-500">Create and assign tasks</p>
             </div>
           </Link>
         </div>

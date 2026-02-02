@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../Api/api";
+import api from "../../Api/api";
 
 function CreateTask() {
   const navigate = useNavigate();
@@ -44,7 +44,7 @@ function CreateTask() {
       await api.post("/tasks", {
         title,
         description,
-        assignedTo,
+        assignedTo: selectedUser._id,
       });
 
       navigate("/alltasks");

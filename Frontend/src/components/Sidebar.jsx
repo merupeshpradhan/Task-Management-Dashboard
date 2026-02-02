@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { RxDashboard } from "react-icons/rx";
 import { FaTasks } from "react-icons/fa";
 import { CiLogout } from "react-icons/ci";
-import api from "../pages/Api/api";
+import api from "../Api/api";
 
 function Sidebar() {
   const location = useLocation();

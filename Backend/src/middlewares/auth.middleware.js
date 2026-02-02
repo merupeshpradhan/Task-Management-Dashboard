@@ -4,26 +4,24 @@ import { ApiError } from "../utils/ApiError.js";
 
 export const authMiddleware = async (req, res, next) => {
   try {
-    // Get token from cookies or Authorization header
     const token =
       req.cookies.accessToken ||
-      req.header("Authorization")?.replace("Bearer ", "").trim();
+      req.header("Authorization")?.replace("Bearer ", "");
+
     if (!token) {
-      throw new ApiError(401, "Please log in first to access this feature");
+      throw new ApiError(401, "Please login first");
     }
 
-    // Verify token
-    const decode = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-    // Find user in DB
-    req.user = await User.findById(decode.id).select("-password");
+    req.user = await User.findById(decoded.id).select("-password");
+
     if (!req.user) {
-      throw new ApiError(401, "User not found. Please login again.");
+      throw new ApiError(401, "User not found");
     }
 
-    // Continue
     next();
   } catch (error) {
-    next(new ApiError(401, "Please log in first to access this feature"));
+    next(new ApiError(401, "Unauthorized"));
   }
 };
