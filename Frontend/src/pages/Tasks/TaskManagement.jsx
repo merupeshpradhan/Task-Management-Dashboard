@@ -345,7 +345,17 @@ function UserTaskTable() {
 
       {/* EDIT PANEL */}
       {selectedTask && isEditing && (
-        <div className="w-[360px] bg-white rounded-xl shadow p-4">
+        <div className="relative w-[360px] bg-white rounded-xl shadow p-4">
+          <button
+            onClick={() => {
+              setSelectedTask(null);
+              setIsEditing(false);
+            }}
+            className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-lg font-bold"
+          >
+            ✕
+          </button>
+
           <h3 className="font-semibold mb-2">{selectedTask.title}</h3>
           <p className="text-sm text-gray-600 mb-3">
             {selectedTask.description || "No description"}
@@ -360,7 +370,6 @@ function UserTaskTable() {
             }
           >
             <option value="pending">Pending</option>
-            <option value="in-progress">In Progress</option>
             <option value="completed">Completed</option>
           </select>
 
