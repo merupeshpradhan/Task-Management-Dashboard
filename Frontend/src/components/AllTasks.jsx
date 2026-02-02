@@ -1,430 +1,425 @@
-// ===============================
-// IMPORTS
-// ===============================
 import { useEffect, useState } from "react";
 import api from "../Api/api";
 
-// ===============================
-// COMPONENT
-// ===============================
-function AllTasks() {
-  // ===============================
-  // STATES
-  // ===============================
+/* ===============================
+   HELPERS
+================================ */
+const formatDate = (date) =>
+  new Date(date).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+const getTaskCode = (id) => `#TSK${id.slice(-3).toUpperCase()}`;
+
+/* ===============================
+   COMPONENT
+================================ */
+const AllTasks = () => {
+  const user = JSON.parse(localStorage.getItem("user"));
+  const isAdmin = user?.role === "admin";
+
+  /* STATES */
   const [tasks, setTasks] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-
-  // create task modal
-  const [openModal, setOpenModal] = useState(false);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [assignedTo, setAssignedTo] = useState("");
-
-  // task details (right panel)
+  const [filteredTasks, setFilteredTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // update status modal
-  const [openStatusModal, setOpenStatusModal] = useState(false);
-  const [newStatus, setNewStatus] = useState("");
-  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [filterStatus, setFilterStatus] = useState("all");
 
-  // edit task modal
-  const [openEditModal, setOpenEditModal] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [editAssignedTo, setEditAssignedTo] = useState("");
+  // Edit states
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    title: "",
+    description: "",
+    status: "pending",
+  });
 
-  // ===============================
-  // FETCH TASKS
-  // ===============================
+  // Create Task modal
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTask, setNewTask] = useState({
+    title: "",
+    description: "",
+    assignedTo: "",
+    status: "pending",
+  });
+
+  // Users for assignment
+  const [users, setUsers] = useState([]);
+
+  /* ===============================
+     FETCH TASKS
+  ================================ */
   const fetchTasks = async () => {
     try {
-      const res = await api.get("/tasks");
-      setTasks(res.data.data);
-    } catch (error) {
-      console.error("Fetch tasks failed", error);
-    } finally {
+      const res = isAdmin
+        ? await api.get("/tasks")
+        : await api.get("/my-tasks"); // user sees only their tasks
+      setTasks(res.data?.data || []);
       setLoading(false);
+    } catch (err) {
+      console.error("Fetch tasks error:", err);
+      setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      if (!isAdmin) return;
+      const res = await api.get("/users");
+      setUsers(res.data?.data || []);
+    } catch (err) {
+      console.error("Fetch users error:", err);
     }
   };
 
   useEffect(() => {
     fetchTasks();
-  }, []);
-
-  // ===============================
-  // FETCH USERS
-  // ===============================
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await api.get("/users");
-        setUsers(res.data.data);
-      } catch (error) {
-        console.error("Fetch users failed", error);
-      }
-    };
     fetchUsers();
   }, []);
 
-  // ===============================
-  // FILTER TASKS
-  // ===============================
-  const filteredTasks =
-    filter === "all"
-      ? tasks
-      : tasks.filter((task) => task.status === filter);
+  /* ===============================
+     FILTER TASKS
+  ================================ */
+  useEffect(() => {
+    let temp = [...tasks];
+    if (filterStatus !== "all") temp = temp.filter((t) => t.status === filterStatus);
+    setFilteredTasks(temp);
+  }, [tasks, filterStatus]);
 
-  // ===============================
-  // CREATE TASK
-  // ===============================
-  const handleCreateTask = async () => {
-    if (!title || !assignedTo) {
-      alert("Title and Assigned User are required");
-      return;
-    }
-
+  /* ===============================
+     UPDATE TASK
+  ================================ */
+  const handleUpdate = async () => {
     try {
-      await api.post("/tasks", {
-        title,
-        description,
-        assignedTo,
-      });
+      const payload =
+        isAdmin || selectedTask.assignedTo?._id === user._id
+          ? isAdmin
+            ? editData
+            : { status: editData.status }
+          : null;
 
-      setOpenModal(false);
-      setTitle("");
-      setDescription("");
-      setAssignedTo("");
-      fetchTasks();
-    } catch (error) {
-      console.error("Create task failed", error);
-    }
-  };
+      if (!payload) return;
 
-  // ===============================
-  // UPDATE STATUS
-  // ===============================
-  const handleUpdateStatus = async () => {
-    if (!newStatus) return;
+      const res = await api.put(`/tasks/${selectedTask._id}`, payload);
+      const updatedTask = res.data.data;
 
-    setUpdatingStatus(true);
-    try {
-      await api.put(`/tasks/${selectedTask._id}`, {
-        status: newStatus,
-      });
-
+      // Update tasks state directly
       setTasks((prev) =>
-        prev.map((t) =>
-          t._id === selectedTask._id ? { ...t, status: newStatus } : t
-        )
+        prev.map((t) => (t._id === updatedTask._id ? updatedTask : t))
       );
 
-      setSelectedTask((prev) => ({ ...prev, status: newStatus }));
-      setOpenStatusModal(false);
-    } catch (error) {
-      alert("Failed to update status");
-    } finally {
-      setUpdatingStatus(false);
-    }
-  };
-
-  // ===============================
-  // EDIT TASK
-  // ===============================
-  const handleEditTask = async () => {
-    try {
-      await api.put(`/tasks/${selectedTask._id}`, {
-        title: editTitle,
-        description: editDescription,
-        assignedTo: editAssignedTo,
-      });
-
-      fetchTasks();
-
-      setSelectedTask((prev) => ({
-        ...prev,
-        title: editTitle,
-        description: editDescription,
-        assignedTo: users.find((u) => u._id === editAssignedTo),
-      }));
-
-      setOpenEditModal(false);
-    } catch (error) {
+      setIsEditing(false);
+      setSelectedTask(null);
+    } catch (err) {
+      console.error("Update failed:", err);
       alert("Failed to update task");
     }
   };
 
-  // ===============================
-  // DELETE TASK
-  // ===============================
-  const handleDeleteTask = async () => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this task?"
-    );
-    if (!confirmDelete) return;
+  /* ===============================
+     DELETE TASK
+  ================================ */
+  const handleDelete = async (id) => {
+    if (!isAdmin) return;
+    if (!window.confirm("Delete this task?")) return;
 
     try {
-      await api.delete(`/tasks/${selectedTask._id}`);
+      await api.delete(`/tasks/${id}`);
+      setTasks((prev) => prev.filter((t) => t._id !== id));
       setSelectedTask(null);
-      fetchTasks();
-    } catch (error) {
+    } catch (err) {
+      console.error("Delete failed:", err);
       alert("Failed to delete task");
     }
   };
 
-  if (loading) return <p>Loading...</p>;
+  /* ===============================
+     CREATE TASK
+  ================================ */
+  const handleCreate = async () => {
+    if (!newTask.title || !newTask.assignedTo) {
+      return alert("Please fill title and select a user");
+    }
 
-  // ===============================
-  // JSX
-  // ===============================
+    try {
+      const res = await api.post("/tasks", newTask);
+      const createdTask = res.data.data;
+
+      // Add to top of tasks
+      setTasks((prev) => [createdTask, ...prev]);
+
+      setShowCreate(false);
+      setNewTask({ title: "", description: "", assignedTo: "", status: "pending" });
+    } catch (err) {
+      console.error("Create task failed:", err);
+      alert("Failed to create task");
+    }
+  };
+
+  if (loading) return <p className="p-6">Loading...</p>;
+
   return (
-    <div className="relative flex">
-      {/* ================= LEFT TABLE ================= */}
-      <div className="flex-1 pr-4">
-        <div className="flex justify-between mb-4">
-          <h2 className="text-xl font-semibold">All Tasks</h2>
-          <button
-            onClick={() => setOpenModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            Create Task
-          </button>
-        </div>
-
-        <div className="flex gap-2 mb-4">
-          {["all", "pending", "completed"].map((item) => (
+    <div className="p-6">
+      {/* ===============================
+          TOP BAR: CREATE + FILTER
+      ================================ */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex gap-2">
+          {isAdmin && (
             <button
-              key={item}
-              onClick={() => setFilter(item)}
-              className={`px-3 py-1 border rounded ${
-                filter === item ? "bg-blue-100 text-blue-600" : ""
+              onClick={() => setShowCreate(true)}
+              className="px-4 py-1 bg-blue-600 text-white rounded"
+            >
+              + Create Task
+            </button>
+          )}
+
+          {["all", "pending", "in-progress", "completed"].map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              className={`px-4 py-1 rounded ${
+                filterStatus === status
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-200 text-gray-700"
               }`}
             >
-              {item}
+              {status.charAt(0).toUpperCase() + status.slice(1)}
             </button>
           ))}
         </div>
-
-        <table className="w-full border bg-white text-left">
-          <thead>
-            <tr className="border-b">
-              <th className="p-2">ID</th>
-              <th>Title</th>
-              <th>Assigned</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filteredTasks.map((task) => (
-              <tr key={task._id} className="border-b text-sm">
-                <td className="p-2">#{task._id.slice(-5)}</td>
-                <td>{task.title}</td>
-                <td>{task.assignedTo?.fullName}</td>
-                <td>{task.status}</td>
-                <td>
-                  <button
-                    onClick={() => setSelectedTask(task)}
-                    className="px-3 py-1 bg-gray-100 rounded"
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
 
-      {/* ================= RIGHT DETAILS PANEL ================= */}
-      {selectedTask && (
-        <div className="w-[350px] border-l bg-white p-4">
-          <div className="flex justify-between mb-4">
-            <h3 className="font-semibold">Task Details</h3>
-            <button onClick={() => setSelectedTask(null)}>✕</button>
-          </div>
+      {/* ===============================
+          TASK TABLE + RIGHT PANEL
+      ================================ */}
+      <div className="flex gap-6">
+        <div className="flex-1 bg-white rounded-xl shadow overflow-x-auto">
+          <table className="w-full text-sm min-w-[600px]">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="p-3 text-left">Task ID</th>
+                <th className="p-3 text-left">Title</th>
+                <th className="p-3 text-center">Assigned To</th>
+                <th className="p-3 text-center">Status</th>
+                <th className="p-3 text-center">Created</th>
+                <th className="p-3 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTasks.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="p-6 text-center text-gray-500">
+                    No tasks found
+                  </td>
+                </tr>
+              ) : (
+                filteredTasks.map((task) => (
+                  <tr key={task._id} className="border-b hover:bg-gray-50">
+                    <td className="p-3 font-semibold">{getTaskCode(task._id)}</td>
+                    <td className="p-3">{task.title}</td>
+                    <td className="p-3 text-center">{task.assignedTo?.fullName || "-"}</td>
+                    <td className="p-3 text-center capitalize">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          task.status === "pending"
+                            ? "bg-orange-100 text-orange-600"
+                            : task.status === "in-progress"
+                            ? "bg-purple-100 text-purple-600"
+                            : "bg-green-100 text-green-600"
+                        }`}
+                      >
+                        {task.status}
+                      </span>
+                    </td>
+                    <td className="p-3 text-center">{formatDate(task.createdAt)}</td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => {
+                          setSelectedTask(task);
+                          setIsEditing(false);
+                        }}
+                        className="px-3 py-1 bg-indigo-600 text-white rounded mr-1"
+                      >
+                        View
+                      </button>
 
-          <div className="mb-3 p-2 bg-yellow-50 rounded flex justify-between items-center">
-            <span className="font-medium text-yellow-600">
-              {selectedTask.status}
-            </span>
-            <button
-              onClick={() => {
-                setNewStatus(selectedTask.status);
-                setOpenStatusModal(true);
-              }}
-              className="border px-3 py-1 rounded"
-            >
-              Update status
-            </button>
-          </div>
-
-          <p className="text-sm text-gray-500">Title</p>
-          <p className="mb-2">{selectedTask.title}</p>
-
-          <p className="text-sm text-gray-500">Assigned To</p>
-          <p className="mb-2">{selectedTask.assignedTo?.fullName}</p>
-
-          <p className="text-sm text-gray-500">Description</p>
-          <p>{selectedTask.description || "No description provided."}</p>
-
-          {/* ACTION BUTTONS */}
-          <div className="flex gap-2 mt-6">
-            <button
-              onClick={() => {
-                setEditTitle(selectedTask.title);
-                setEditDescription(selectedTask.description);
-                setEditAssignedTo(selectedTask.assignedTo?._id);
-                setOpenEditModal(true);
-              }}
-              className="flex-1 border px-3 py-2 rounded"
-            >
-              Edit
-            </button>
-
-            <button
-              onClick={handleDeleteTask}
-              className="flex-1 bg-red-600 text-white px-3 py-2 rounded"
-            >
-              Delete
-            </button>
-          </div>
+                      {(isAdmin || task.assignedTo?._id === user._id) && (
+                        <button
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setIsEditing(true);
+                            setEditData({
+                              title: task.title,
+                              description: task.description || "",
+                              status: task.status,
+                            });
+                          }}
+                          className="px-3 py-1 bg-green-600 text-white rounded"
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
 
-      {/* ================= UPDATE STATUS MODAL ================= */}
-      {openStatusModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white w-[420px] p-5 rounded">
-            <h3 className="font-semibold text-lg mb-4">Task Status</h3>
+        {/* RIGHT PANEL */}
+        {selectedTask && (
+          <div className="w-[360px] bg-white rounded-xl shadow p-4">
+            <h3 className="font-semibold mb-2">{selectedTask.title}</h3>
+
+            {isEditing ? (
+              <>
+                {isAdmin && (
+                  <>
+                    <input
+                      className="w-full border p-2 rounded mb-2"
+                      value={editData.title}
+                      onChange={(e) =>
+                        setEditData({ ...editData, title: e.target.value })
+                      }
+                    />
+                    <textarea
+                      className="w-full border p-2 rounded mb-2"
+                      rows="3"
+                      value={editData.description}
+                      onChange={(e) =>
+                        setEditData({ ...editData, description: e.target.value })
+                      }
+                    />
+                  </>
+                )}
+
+                {(isAdmin || selectedTask.assignedTo?._id === user._id) && (
+                  <select
+                    className="w-full border p-2 rounded mb-3"
+                    value={editData.status}
+                    onChange={(e) =>
+                      setEditData({ ...editData, status: e.target.value })
+                    }
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                )}
+
+                <button
+                  onClick={handleUpdate}
+                  className="w-full bg-green-600 text-white py-2 rounded"
+                >
+                  Save Changes
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-3">
+                  {selectedTask.description || "No description"}
+                </p>
+
+                <p className="text-sm mb-2 capitalize">
+                  <b>Status:</b> {selectedTask.status}
+                </p>
+
+                {(isAdmin || selectedTask.assignedTo?._id === user._id) && (
+                  <button
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditData({
+                        title: selectedTask.title,
+                        description: selectedTask.description || "",
+                        status: selectedTask.status,
+                      });
+                    }}
+                    className="w-full border py-2 rounded mt-3"
+                  >
+                    Edit
+                  </button>
+                )}
+
+                {isAdmin && (
+                  <button
+                    onClick={() => handleDelete(selectedTask._id)}
+                    className="w-full bg-red-600 text-white py-2 rounded mt-2"
+                  >
+                    Delete
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ===============================
+          CREATE TASK MODAL
+      ================================ */}
+      {showCreate && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-xl w-[400px] shadow">
+            <h3 className="text-lg font-semibold mb-4">Create Task</h3>
+
+            <input
+              type="text"
+              placeholder="Title"
+              className="w-full border p-2 rounded mb-2"
+              value={newTask.title}
+              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+            />
+            <textarea
+              placeholder="Description"
+              className="w-full border p-2 rounded mb-2"
+              rows="3"
+              value={newTask.description}
+              onChange={(e) =>
+                setNewTask({ ...newTask, description: e.target.value })
+              }
+            />
 
             <select
-              value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value)}
-              className="w-full border p-2 rounded mb-4"
+              className="w-full border p-2 rounded mb-3"
+              value={newTask.assignedTo}
+              onChange={(e) =>
+                setNewTask({ ...newTask, assignedTo: e.target.value })
+              }
+            >
+              <option value="">Select User</option>
+              {users.map((u) => (
+                <option key={u._id} value={u._id}>
+                  {u.fullName}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="w-full border p-2 rounded mb-3"
+              value={newTask.status}
+              onChange={(e) => setNewTask({ ...newTask, status: e.target.value })}
             >
               <option value="pending">Pending</option>
+              <option value="in-progress">In Progress</option>
               <option value="completed">Completed</option>
             </select>
 
             <div className="flex gap-2">
               <button
-                onClick={() => setOpenStatusModal(false)}
-                className="w-1/2 border p-2 rounded"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={handleUpdateStatus}
-                disabled={updatingStatus}
-                className="w-1/2 bg-blue-600 text-white p-2 rounded"
-              >
-                {updatingStatus ? "Saving..." : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= EDIT TASK MODAL ================= */}
-      {openEditModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white p-5 w-[420px] rounded">
-            <h3 className="mb-3 font-semibold text-lg">Edit Task</h3>
-
-            <input
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full border p-2 mb-2"
-            />
-
-            <textarea
-              value={editDescription}
-              onChange={(e) => setEditDescription(e.target.value)}
-              className="w-full border p-2 mb-2"
-            />
-
-            <select
-              value={editAssignedTo}
-              onChange={(e) => setEditAssignedTo(e.target.value)}
-              className="w-full border p-2 mb-4"
-            >
-              {users.map((user) => (
-                <option key={user._id} value={user._id}>
-                  {user.fullName}
-                </option>
-              ))}
-            </select>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setOpenEditModal(false)}
-                className="w-1/2 border p-2 rounded"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={handleEditTask}
-                className="w-1/2 bg-blue-600 text-white p-2 rounded"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================= CREATE TASK MODAL ================= */}
-      {openModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-          <div className="bg-white p-5 w-[400px] rounded">
-            <h3 className="mb-3 font-semibold">Create Task</h3>
-
-            <input
-              placeholder="Task title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full border p-2 mb-2"
-            />
-
-            <textarea
-              placeholder="Description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full border p-2 mb-2"
-            />
-
-            <select
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              className="w-full border p-2 mb-4"
-            >
-              <option value="">Assign to</option>
-              {users.map((user) => (
-                <option key={user._id} value={user._id}>
-                  {user.fullName}
-                </option>
-              ))}
-            </select>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setOpenModal(false)}
-                className="w-1/2 border p-2"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={handleCreateTask}
-                className="w-1/2 bg-blue-600 text-white p-2"
+                onClick={handleCreate}
+                className="flex-1 bg-blue-600 text-white py-2 rounded"
               >
                 Create
+              </button>
+              <button
+                onClick={() => setShowCreate(false)}
+                className="flex-1 border py-2 rounded"
+              >
+                Cancel
               </button>
             </div>
           </div>
@@ -432,6 +427,6 @@ function AllTasks() {
       )}
     </div>
   );
-}
+};
 
 export default AllTasks;

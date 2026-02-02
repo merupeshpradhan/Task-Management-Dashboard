@@ -20,22 +20,27 @@ export const createTask = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(201, task));
 });
 
-export const getAllTasks = asyncHandler(async (req, res) => {
-  const tasks = await Task.find().populate("assignedTo", "fullName email");
-  res.status(200).json(new ApiResponse(200, tasks));
-});
+export const getAllTasks = async (req, res) => {
+  const tasks = await Task.find()
+    .populate("createdBy", "fullName email")
+    .populate("assignedTo", "fullName email");
 
-export const getMyTasks = asyncHandler(async (req, res) => {
-  let tasks;
+  res.status(200).json({
+    success: true,
+    data: tasks,
+  });
+};
 
-  if (req.user.role === "admin") {
-    tasks = await Task.find().populate("assignedTo", "fullName email");
-  } else {
-    tasks = await Task.find({ assignedTo: req.user._id });
-  }
+export const getMyTasks = async (req, res) => {
+  const tasks = await Task.find({ assignedTo: req.user.id })
+    .populate("createdBy", "fullName email")
+    .populate("assignedTo", "fullName email");
 
-  res.status(200).json(new ApiResponse(200, tasks));
-});
+  res.status(200).json({
+    success: true,
+    data: tasks,
+  });
+};
 
 export const updateTask = asyncHandler(async (req, res) => {
   const task = await Task.findById(req.params.id);
