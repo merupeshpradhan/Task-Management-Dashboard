@@ -49,13 +49,13 @@ const AllTasks = () => {
   const [users, setUsers] = useState([]);
 
   /* ===============================
-     FETCH TASKS
+     FETCH TASKS & USERS
   ================================ */
   const fetchTasks = async () => {
     try {
       const res = isAdmin
         ? await api.get("/tasks")
-        : await api.get("/my-tasks"); // user sees only their tasks
+        : await api.get("/my-tasks");
       setTasks(res.data?.data || []);
       setLoading(false);
     } catch (err) {
@@ -84,7 +84,8 @@ const AllTasks = () => {
   ================================ */
   useEffect(() => {
     let temp = [...tasks];
-    if (filterStatus !== "all") temp = temp.filter((t) => t.status === filterStatus);
+    if (filterStatus !== "all")
+      temp = temp.filter((t) => t.status === filterStatus);
     setFilteredTasks(temp);
   }, [tasks, filterStatus]);
 
@@ -105,7 +106,6 @@ const AllTasks = () => {
       const res = await api.put(`/tasks/${selectedTask._id}`, payload);
       const updatedTask = res.data.data;
 
-      // Update tasks state directly
       setTasks((prev) =>
         prev.map((t) => (t._id === updatedTask._id ? updatedTask : t))
       );
@@ -147,9 +147,7 @@ const AllTasks = () => {
       const res = await api.post("/tasks", newTask);
       const createdTask = res.data.data;
 
-      // Add to top of tasks
       setTasks((prev) => [createdTask, ...prev]);
-
       setShowCreate(false);
       setNewTask({ title: "", description: "", assignedTo: "", status: "pending" });
     } catch (err) {
@@ -162,20 +160,10 @@ const AllTasks = () => {
 
   return (
     <div className="p-6">
-      {/* ===============================
-          TOP BAR: CREATE + FILTER
-      ================================ */}
+      {/* TOP BAR: FILTERS + CREATE BUTTON */}
       <div className="flex justify-between items-center mb-4">
+        {/* FILTER BUTTONS */}
         <div className="flex gap-2">
-          {isAdmin && (
-            <button
-              onClick={() => setShowCreate(true)}
-              className="px-4 py-1 bg-blue-600 text-white rounded"
-            >
-              + Create Task
-            </button>
-          )}
-
           {["all", "pending", "in-progress", "completed"].map((status) => (
             <button
               key={status}
@@ -190,12 +178,21 @@ const AllTasks = () => {
             </button>
           ))}
         </div>
+
+        {/* CREATE TASK BUTTON (RIGHT) */}
+        {isAdmin && (
+          <button
+            onClick={() => setShowCreate(true)}
+            className="px-4 py-1 bg-blue-600 text-white rounded"
+          >
+            + Create Task
+          </button>
+        )}
       </div>
 
-      {/* ===============================
-          TASK TABLE + RIGHT PANEL
-      ================================ */}
+      {/* TASK TABLE + RIGHT PANEL */}
       <div className="flex gap-6">
+        {/* TASK TABLE */}
         <div className="flex-1 bg-white rounded-xl shadow overflow-x-auto">
           <table className="w-full text-sm min-w-[600px]">
             <thead className="bg-gray-100">
@@ -227,8 +224,8 @@ const AllTasks = () => {
                           task.status === "pending"
                             ? "bg-orange-100 text-orange-600"
                             : task.status === "in-progress"
-                            ? "bg-purple-100 text-purple-600"
-                            : "bg-green-100 text-green-600"
+                              ? "bg-purple-100 text-purple-600"
+                              : "bg-green-100 text-green-600"
                         }`}
                       >
                         {task.status}
@@ -245,7 +242,6 @@ const AllTasks = () => {
                       >
                         View
                       </button>
-
                       {(isAdmin || task.assignedTo?._id === user._id) && (
                         <button
                           onClick={() => {
@@ -272,7 +268,18 @@ const AllTasks = () => {
 
         {/* RIGHT PANEL */}
         {selectedTask && (
-          <div className="w-[360px] bg-white rounded-xl shadow p-4">
+          <div className="w-[360px] bg-white rounded-xl shadow p-4 relative">
+            {/* CLOSE BUTTON */}
+            <button
+              onClick={() => {
+                setSelectedTask(null);
+                setIsEditing(false);
+              }}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-lg font-bold"
+            >
+              ✕
+            </button>
+
             <h3 className="font-semibold mb-2">{selectedTask.title}</h3>
 
             {isEditing ? (
@@ -306,7 +313,6 @@ const AllTasks = () => {
                     }
                   >
                     <option value="pending">Pending</option>
-                    <option value="in-progress">In Progress</option>
                     <option value="completed">Completed</option>
                   </select>
                 )}
@@ -358,12 +364,18 @@ const AllTasks = () => {
         )}
       </div>
 
-      {/* ===============================
-          CREATE TASK MODAL
-      ================================ */}
+      {/* CREATE TASK MODAL */}
       {showCreate && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-xl w-[400px] shadow">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="bg-white p-6 rounded-xl w-[400px] shadow relative">
+            {/* CLOSE BUTTON */}
+            <button
+              onClick={() => setShowCreate(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-lg font-bold"
+            >
+              ✕
+            </button>
+
             <h3 className="text-lg font-semibold mb-4">Create Task</h3>
 
             <input
@@ -371,7 +383,9 @@ const AllTasks = () => {
               placeholder="Title"
               className="w-full border p-2 rounded mb-2"
               value={newTask.title}
-              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+              onChange={(e) =>
+                setNewTask({ ...newTask, title: e.target.value })
+              }
             />
             <textarea
               placeholder="Description"
@@ -396,16 +410,6 @@ const AllTasks = () => {
                   {u.fullName}
                 </option>
               ))}
-            </select>
-
-            <select
-              className="w-full border p-2 rounded mb-3"
-              value={newTask.status}
-              onChange={(e) => setNewTask({ ...newTask, status: e.target.value })}
-            >
-              <option value="pending">Pending</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
             </select>
 
             <div className="flex gap-2">
